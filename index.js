@@ -66,14 +66,13 @@ async function handleApiRequest(req, res, isMobile) {
         try {
             console.log('Starting coverage for ' + (isMobile ? 'mobile' : 'desktop') + ' version');
             const [covered_css, resultItem] = await generateCoverage(site_url_page, page_send_cov, css_id_or_class_click, css_id_or_class_hover, isMobile);
-            console.log(covered_css);
             console.log('Coverage completed for ' + (isMobile ? 'mobile' : 'desktop') + ' version');
            
             res.status(200).json({
                 page_send_cov,
                 status: 200,
                 message: covered_css,
-                resultItem: JSON.stringify(resultItem.join(" ")),
+                resultItem: resultItem,
             });
             res.end();
         } catch (error) {
@@ -99,7 +98,7 @@ async function generateCoverage(site_url_page, page_send_cov, css_id_or_class_cl
     console.log('Open the URL ' + site_url_page);
     await page.goto(site_url_page);
     console.log('The URL is open ' + site_url_page);
-    await page.waitForSelector('.min-footer');
+    
     await Promise.all([
         page.coverage.startJSCoverage(),
         page.coverage.startCSSCoverage(),
@@ -107,13 +106,13 @@ async function generateCoverage(site_url_page, page_send_cov, css_id_or_class_cl
     await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
     });
-
-    const resultItem = await performActions(page, css_id_or_class_click, 'click');
-    await performActions(page, css_id_or_class_hover, 'hover');
+    let resultItem = "";
+    resultItem += (await performActions(page, css_id_or_class_click, 'click')).join("");
+    resultItem += (await performActions(page, css_id_or_class_hover, 'hover')).join("");
 
     const coverageCSS = await page.coverage.stopCSSCoverage();
     await page.coverage.stopJSCoverage();
-
+    
     const data_css = coverageCSS;
     let covered_css = '';
     for (let entry of data_css) {
@@ -124,8 +123,8 @@ async function generateCoverage(site_url_page, page_send_cov, css_id_or_class_cl
 
     await browser.close();
     // Оптимізація CSS коду
-    covered_css = new CleanCSS().minify(covered_css).styles;
-    console.log(covered_css);
+    // covered_css = new CleanCSS().minify(covered_css).styles;
+    
     return [covered_css, resultItem];
 }
 
